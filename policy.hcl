@@ -593,6 +593,308 @@ policy "cis-v1.30" {
   policy "azure-cis-section-5" {
     description = "Azure CIS Section 5"
 
+    query "5.1.1" {
+      description = "Azure CIS 5.1.1: Ensure that a 'Diagnostics Setting' exists"
+      query = file("queries/manual.sql")
+    }
+
+    query "5.1.2" {
+      description = "Azure CIS 5.1.2: Ensure Diagnostic Setting captures appropriate categories"
+      query =<<EOF
+        WITH subscription_categories AS (
+          SELECT DISTINCT
+            subs.id,
+            CASE
+              WHEN ds.cq_id = logs.diagnostic_setting_cq_id THEN logs.category
+              ELSE NULL
+            END AS category
+          FROM
+            azure_subscription_subscriptions subs
+              LEFT OUTER JOIN azure_monitor_diagnostic_settings ds
+              ON subs.id=ds.resource_uri,
+            azure_monitor_diagnostic_setting_logs logs
+        )
+        SELECT id
+        FROM subscription_categories
+        WHERE
+          category IS NULL
+          OR category IN ('Administrative', 'Alert', 'Policy', 'Security')
+        GROUP by id
+        HAVING COUNT(category) < 4
+      EOF
+    }
+
+    query "5.1.3" {
+      description = "Ensure the storage container storing the activity logs is not publicly accessible"
+      query =<<EOF
+        SELECT a.id AS account_id, c.id AS container_id, c.name AS container_name
+        FROM azure_storage_accounts a JOIN azure_storage_containers c ON a.cq_id=c.account_cq_id
+        WHERE a.id IN (SELECT DISTINCT storage_account_id FROM azure_monitor_log_profiles)
+              AND c.name LIKE 'insights-%'
+              AND c.public_access != 'None'
+      EOF
+    }
+
+    query "5.1.4" {
+      description = "Azure CIS 5.1.4: Ensure the storage account containing the container with activity logs is encrypted with BYOK (Use Your Own Key)"
+      query =<<EOF
+        SELECT id, name
+        FROM azure_storage_accounts
+        WHERE id IN (SELECT DISTINCT storage_account_id FROM azure_monitor_log_profiles)
+              AND (encryption_key_source != 'Microsoft.Keyvault'
+                   OR encryption_key_vault_properties_key_name IS NULL)
+      EOF
+    }
+
+    query "5.1.5" {
+      description = "Azure CIS 5.1.5: Ensure that logging for Azure KeyVault is 'Enabled'"
+      query =<<EOF
+        SELECT v.id
+        FROM
+          azure_keyvault_vaults v
+            LEFT OUTER JOIN azure_monitor_diagnostic_settings ds
+            ON v.id = ds.resource_uri
+            LEFT OUTER JOIN azure_monitor_diagnostic_setting_logs logs
+            ON ds.cq_id = logs.diagnostic_setting_cq_id
+        WHERE logs.category IS DISTINCT FROM 'AuditEvent'
+              OR logs.retention_policy_enabled IS DISTINCT FROM true
+              OR logs.retention_policy_days IS NULL
+      EOF
+    }
+
+    query "5.2.1" {
+      description = "Azure CIS 5.2.1: Ensure that Activity Log Alert exists for Create Policy Assignment"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.authorization/policyassignments/write')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'administrative')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.authorization/policyassignments'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
+
+    query "5.2.2" {
+      description = "Azure CIS 5.2.2: Ensure that Activity Log Alert exists for Delete Policy Assignment"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.authorization/policyassignments/delete')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'administrative')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.authorization/policyassignments'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
+
+    query "5.2.3" {
+      description = "Azure CIS 5.2.3: Ensure that Activity Log Alert exists for Create or Update Network Security Group"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.network/networksecuritygroups/write')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'administrative')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.network/networksecuritygroups'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
+
+    query "5.2.4" {
+      description = "Azure CIS 5.2.4: Ensure that Activity Log Alert exists for Delete Network Security Group"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.network/networksecuritygroups/delete')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'administrative')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.network/networksecuritygroups'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
+
+    query "5.2.5" {
+      description = "Azure CIS 5.2.5: Ensure that Activity Log Alert exists for Create or Update Network Security Group Rule"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.network/networksecuritygroups/securityrules/write')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'administrative')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.network/networksecuritygroups/securityrules'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
+
+    query "5.2.6" {
+      description = "Azure CIS 5.2.6: Ensure that activity log alert exists for the Delete Network Security Group Rule"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.network/networksecuritygroups/securityrules/delete')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'administrative')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.network/networksecuritygroups/securityrules'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
+
+    query "5.2.7" {
+      description = "Azure CIS 5.2.7: Ensure that Activity Log Alert exists for Create or Update Security Solution"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.security/securitysolutions/write')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'security')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.security/securitysolutions'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
+
+    query "5.2.8" {
+      description = "Azure CIS 5.2.8: Ensure that Activity Log Alert exists for Delete Security Solution"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.security/securitysolutions/delete')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'security')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.security/securitysolutions'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
+
+    query "5.2.9" {
+      description = "Azure CIS 5.2.9: Ensure that Activity Log Alert exists for Create or Update or Delete SQL Server Firewall Rule"
+      query =<<EOF
+        WITH subs_alerts AS (
+          SELECT subs.id, (
+                SELECT COUNT(*)
+                FROM azure_monitor_activity_log_alerts alerts JOIN azure_monitor_activity_log_alert_conditions conds ON alerts.cq_id = conds.activity_log_alert_cq_id
+                WHERE array_position(alerts.scopes, subs.id) IS NOT NULL
+                  AND alerts.location = 'Global'
+                  AND alerts.enabled
+                  AND 
+                  ((conds.field = 'operationName' AND LOWER(conds.equals) = 'microsoft.sql/servers/firewallrules/write')
+                   OR (conds.field = 'category' AND LOWER(conds.equals) = 'administrative')
+                   OR (conds.field = 'resourceType' AND LOWER(conds.equals) = 'microsoft.sql/servers/firewallrules'))
+                GROUP BY alerts.id
+                HAVING COUNT(*) = 3
+                LIMIT 1
+          ) as ok
+          FROM azure_subscription_subscriptions subs
+        )
+        SELECT id
+        FROM subs_alerts
+        WHERE ok IS DISTINCT FROM 3
+      EOF
+    }
   }
 
   policy "azure-cis-section-6" {
