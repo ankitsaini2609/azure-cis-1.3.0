@@ -341,6 +341,114 @@ policy "cis-v1.30" {
   policy "azure-cis-section-3" {
     description = "Azure CIS Section 3"
 
+    query "3.1" {
+      description = "Azure CIS 3.1: Ensure that 'Secure transfer required' is set to 'Enabled'"
+      query =<<EOF
+        SELECT id, name, type
+        FROM azure_storage_accounts
+        WHERE NOT enable_https_traffic_only
+      EOF
+    }
+
+    query "3.2" {
+      description = "Azure CIS 3.2: Ensure that storage account access keys are periodically regenerated"
+      query =<<EOF
+        WITH regenerates_per_account AS (
+          SELECT
+            a.subscription_id,
+            a.id,
+            a.name,
+            (
+              SELECT COUNT(*)
+              FROM azure_monitor_activity_logs logs
+              WHERE logs.resource_id = a.id
+                AND authorization_action IS NOT DISTINCT FROM 'Microsoft.Storage/storageAccounts/regenerateKey/action'
+                AND status_value IS NOT DISTINCT FROM 'Succeeded'
+            ) as count
+          FROM azure_storage_accounts a
+        )
+        SELECT subscription_id, id, name
+        FROM regenerates_per_account
+        WHERE count = 0
+      EOF
+    }
+
+    query "3.3" {
+      description = "Azure CIS 3.3: Ensure Storage logging is enabled for Queue service for read, write, and delete requests"
+      query =<<EOF
+        SELECT subscription_id, id
+        FROM azure_storage_accounts
+        WHERE NOT ((queue_logging_settings -> 'Delete')::boolean
+                   AND (queue_logging_settings -> 'Read')::boolean
+                   AND (queue_logging_settings -> 'Write')::boolean)
+      EOF
+    }
+
+    query "3.4" {
+      description = "Azure CIS 3.4: Ensure that shared access signature tokens expire within an hour"
+      query = file("queries/manual.sql")
+    }
+
+    query "3.5" {
+      description = "Azure CIS 3.5: Ensure that 'Public access level' is set to Private for blob containers"
+      query =<<EOF
+        SELECT subscription_id, account_id, id, name
+        FROM azure_storage_containers
+        WHERE NOT deleted AND public_access != 'PublicAccessNone'
+      EOF
+    }
+
+    query "3.6" {
+      description = "Azure CIS 3.6: Ensure default network access rule for Storage Accounts is set to deny"
+      query =<<EOF
+        SELECT subscription_id, id, name
+        FROM azure_storage_accounts
+        WHERE network_rule_set_default_action != 'DefaultActionDeny'
+      EOF
+    }
+
+    query "3.7" {
+      description = "Azure CIS 3.7: Ensure 'Trusted Microsoft Services' is enabled for Storage Account access"
+      query =<<EOF
+        SELECT subscription_id, id, name
+        FROM azure_storage_accounts
+        WHERE position('AzureServices' in network_rule_set_bypass) != 0
+      EOF
+    }
+
+    query "3.8" {
+      description = "Azure CIS 3.8: Ensure soft delete is enabled for Azure Storage"
+      query =<<EOF
+        SELECT
+        FROM azure_storage_accounts a LEFT OUTER JOIN azure_storage_blob_services b ON a.cq_id=b.account_cq_id
+        WHERE delete_retention_policy_enabled IS NULL OR NOT delete_retention_policy_enabled
+      EOF
+    }
+
+    query "3.9" {
+      description = "Azure CIS 3.9: Ensure storage for critical data are encrypted with Customer Managed Key"
+      query =<<EOF
+        SELECT subscription_id, id
+        FROM azure_storage_accounts
+        WHERE encryption_key_source != 'Microsoft.Storage'
+      EOF
+    }
+
+    query "3.10" {
+      description = "Azure CIS 3.10: Ensure Storage logging is enabled for Blob service for read, write, and delete requests"
+      query =<<EOF
+        SELECT subscription_id, id
+        FROM azure_storage_accounts
+        WHERE NOT ((blob_logging_settings -> 'Delete')::boolean
+                   AND (blob_logging_settings -> 'Read')::boolean
+                   AND (blob_logging_settings -> 'Write')::boolean)
+      EOF
+    }
+
+    query "3.11" {
+      description = "Azure CIS 3.11: Ensure Storage logging is enabled for Table service for read, write, and delete requests"
+      query = file("queries/manual.sql")
+    }
   }
 
   policy "azure-cis-section-4" {
