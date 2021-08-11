@@ -430,7 +430,7 @@ policy "cis-v1.30" {
       query =<<EOF
         SELECT subscription_id, id
         FROM azure_storage_accounts
-        WHERE encryption_key_source != 'Microsoft.Storage'
+        WHERE encryption_key_source = 'Microsoft.Storage'
       EOF
     }
 
