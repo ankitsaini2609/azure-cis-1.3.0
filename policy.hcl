@@ -9,114 +9,6 @@ policy "cis-v1.30" {
   policy "azure-cis-section-1" {
     description = "Azure CIS Section 1"
 
-    query "1.1" {
-      description = "Azure CIS 1.1 Ensure that multi-factor authentication is enabled for all privileged users (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.2" {
-      description = "Azure CIS 1.2 Ensure that multi-factor authentication is enabled for all non-privileged users (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.3" {
-      description = "Azure CIS 1.3 Ensure guest users are reviewed on a monthly basis (Automated)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.4" {
-      description = "Azure CIS 1.4 Ensure that 'Allow users to remember multi-factor authentication on devices they trust' is 'Disabled' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.5" {
-      description = "Azure CIS 1.5 Ensure that 'Number of methods required to reset' is set to '2' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.6" {
-      description = "Azure CIS 1.6 Ensure that 'Number of days before users are asked to re-confirm their authentication information' is not set to \"0\" (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
-    query "1.7" {
-      description = "Azure CIS 1.7 Ensure that 'Notify users on password resets?' is set to 'Yes' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
-    query "1.8" {
-      description = "Azure CIS 1.8 Ensure that 'Notify all admins when other admins reset their password?' is set to 'Yes' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.9" {
-      description = "Azure CIS 1.9 Ensure that 'Users can consent to apps accessing company data on their behalf' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.10" {
-      description = "Azure CIS 1.10 Ensure that 'Users can add gallery apps to their Access Panel' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
-    query "1.11" {
-      description = "Azure CIS 1.11 Ensure that 'Users can register applications' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
-    query "1.12" {
-      description = "Azure CIS 1.12 Ensure that 'Guest user permissions are limited' is set to 'Yes' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.13" {
-      description = "Azure CIS 1.13 Ensure that 'Members can invite' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.14" {
-      description = "Azure CIS 1.14 Ensure that 'Guests can invite' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.15" {
-      description = "Azure CIS 1.15 Ensure that 'Restrict access to Azure AD administration portal' is set to 'Yes' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
-    query "1.16" {
-      description = "Azure CIS 1.16 Ensure that 'Restrict user ability to access groups features in the Access Pane' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
-    query "1.17" {
-      description = "Azure CIS 1.17 Ensure that 'Users can create security groups in Azure Portals' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.18" {
-      description = "Azure CIS 1.18 Ensure that 'Owners can manage group membership requests in the Access Panel' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.19" {
-      description = "Azure CIS 1.19 Ensure that 'Users can create Microsoft 365 groups in Azure Portals' is set to 'No' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
-    query "1.20" {
-      description = "Azure CIS 1.20 Ensure that 'Require Multi-Factor Auth to join devices' is set to 'Yes' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
     query "1.21" {
       description = "Azure CIS 1.21 Ensure that no custom subscription owner roles are created (Automated)"
       query = <<EOF
@@ -138,16 +30,6 @@ policy "cis-v1.30" {
         JOIN meets_scopes s ON
         a.cq_id = s.cq_id
     EOF
-    }
-
-    query "1.22" {
-      description = "Azure CIS 1.22 Ensure Security Defaults is enabled on Azure Active Directory (Automated)"
-      query = file("queries/manual.sql")
-    }
-
-    query "1.23" {
-      description = "Azure CIS 1.23 Ensure Custom Role is assigned for Administering Resource Locks (Manual)"
-      query = file("queries/manual.sql")
     }
   }
 
@@ -384,11 +266,6 @@ policy "cis-v1.30" {
       EOF
     }
 
-    query "3.4" {
-      description = "Azure CIS 3.4: Ensure that shared access signature tokens expire within an hour"
-      query = file("queries/manual.sql")
-    }
-
     query "3.5" {
       description = "Azure CIS 3.5: Ensure that 'Public access level' is set to Private for blob containers"
       query =<<EOF
@@ -443,11 +320,6 @@ policy "cis-v1.30" {
                    AND (blob_logging_settings -> 'Read')::boolean
                    AND (blob_logging_settings -> 'Write')::boolean)
       EOF
-    }
-
-    query "3.11" {
-      description = "Azure CIS 3.11: Ensure Storage logging is enabled for Table service for read, write, and delete requests"
-      query = file("queries/manual.sql")
     }
   }
 
@@ -700,11 +572,6 @@ policy "cis-v1.30" {
 
   policy "azure-cis-section-5" {
     description = "Azure CIS Section 5"
-
-    query "5.1.1" {
-      description = "Azure CIS 5.1.1: Ensure that a 'Diagnostics Setting' exists"
-      query = file("queries/manual.sql")
-    }
 
     query "5.1.2" {
       description = "Azure CIS 5.1.2: Ensure Diagnostic Setting captures appropriate categories"
@@ -1083,11 +950,6 @@ policy "cis-v1.30" {
     EOF
     }
 
-    query "6.5" {
-      description = "Azure CIS 6.5 Ensure that Network Watcher is 'Enabled' (Manual)"
-      query = file("queries/manual.sql")
-    }
-
     query "6.6" {
       description = "Azure CIS 6.6 Ensure that UDP Services are restricted from the Internet (Automated)"
       query = <<EOF
@@ -1147,32 +1009,6 @@ policy "cis-v1.30" {
     EOF
     }
 
-    query "7.4" {
-      description = "Azure CIS 7.4 Ensure that only approved extensions are installed (Manual)"
-//      //todo we can list machines extensions names to ease manual check
-//      query = <<EOF
-//      SELECT v.id AS vm_id , v.name AS vm_name, r."name" AS extension_name
-//      FROM azure_compute_virtual_machines v
-//      JOIN azure_compute_virtual_machine_resources r ON
-//      v.cq_id = r.virtual_machine_cq_id
-//    EOF
-      query = file("queries/manual.sql")
-    }
-
-
-    query "7.5" {
-      description = "Azure CIS 7.5 Ensure that the latest OS Patches for all Virtual Machines are applied (Manual)"
-      query = file("queries/manual.sql")
-    }
-
-
-    query "7.6" {
-      description = "Azure CIS 7.6 Ensure that the endpoint protection for all Virtual Machines is installed (Manual)"
-      //todo theoretically we can check if vm has security extensions but user also can have his own security extensions which we can't check
-      //      EndpointSecurity || TrendMicroDSA* || Antimalware || EndpointProtection || SCWPAgent || PortalProtectExtension* || FileSecurity*
-      query = file("queries/manual.sql")
-    }
-
     query "7.7" {
       description = "Azure CIS 7.7 Ensure that VHD's are encrypted (Manual)"
       query = <<EOF
@@ -1214,11 +1050,6 @@ policy "cis-v1.30" {
       WHERE enabled != TRUE
       OR expires IS NULL;
     EOF
-    }
-
-    query "8.3" {
-      description = "Azure CIS 8.3 Ensure that Resource Locks are set for mission critical Azure resources (Manual)"
-      query = file("queries/manual.sql")
     }
 
     query "8.4" {
@@ -1301,36 +1132,6 @@ policy "cis-v1.30" {
         OR identity_principal_id = '';
     EOF
     }
-
-    query "9.6" {
-      description = "Azure CIS 9.6 Ensure that 'PHP version' is the latest, if used to run the web app (Manual)"
-      //we can check it but we need the latest php version. we can hardcode it here
-      //todo we can show php version to ease check process
-      query = file("queries/manual.sql")
-    }
-
-    query "9.7" {
-      description = "Azure CIS 9.7 Ensure that 'Python version' is the latest, if used to run the web app (Manual)"
-      //we can check it but we need the latest php version. we can hardcode it here
-      //todo we can show version to ease check process
-      query = file("queries/manual.sql")
-    }
-
-    query "9.8" {
-      description = "Azure CIS 9.8 Ensure that 'Java version' is the latest, if used to run the web app (Manual)"
-      //we can check it but we need the latest php version. we can hardcode it here
-      //todo we can show version to ease check process
-      query = file("queries/manual.sql")
-    }
-
-
-    query "9.9" {
-      description = "Azure CIS 9.9 Ensure that 'HTTP Version' is the latest, if used to run the web app (Manual)"
-      //we can check it but we need the latest php version. we can hardcode it here
-      //todo we can show version to ease check process
-      query = file("queries/manual.sql")
-    }
-
     query "9.10" {
       description = "Azure CIS 9.10 Ensure FTP deployments are disabled (Automated)"
       query = <<EOF
@@ -1341,11 +1142,6 @@ policy "cis-v1.30" {
       a.cq_id = p.app_cq_id
       WHERE p.user_name NOT like concat('%',a."name", '%')
     EOF
-    }
-
-    query "9.11" {
-      description = "Azure CIS 9.11 Ensure Azure Keyvaults are used to store secrets (Manual)"
-      query = file("queries/manual.sql")
     }
   }
 }
